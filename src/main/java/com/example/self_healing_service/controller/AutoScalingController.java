@@ -2,23 +2,31 @@ package com.example.self_healing_service.controller;
 
 import com.example.self_healing_service.service.AnomalyDetectionService;
 import com.example.self_healing_service.service.AutoScalingService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
-public class AutoScalingController {
+@RequestMapping("/system")
+public class AutoScalingController
+{
 
-    @Autowired
-    private AnomalyDetectionService anomalyDetectionService;
+    private final AnomalyDetectionService anomalyService;
+    private final AutoScalingService scalingService;
 
-    @Autowired
-    private AutoScalingService autoScalingService;
+    public AutoScalingController(AnomalyDetectionService anomalyService, AutoScalingService scalingService) {
+        this.anomalyService = anomalyService;
+        this.scalingService = scalingService;
+    }
 
-    @GetMapping("/auto-scale")
-    public String autoScale(@RequestParam double responseTime) {
-        boolean isAnomaly = anomalyDetectionService.detectAnomaly(responseTime);
-        return autoScalingService.scaleService(isAnomaly);
+    @PostMapping("/check-log")
+    public String checkLog(@RequestBody Map<String, String> body) {
+        String log = body.get("log");
+        boolean isAnomaly = anomalyService.detectAnomalyFromLog(log);
+        if (isAnomaly) {
+            scalingService.performSelfHealingAction();
+            return "Anomaly detected in logs. Self-healing triggered.";
+        }
+        return "Logs look normal. No action taken.";
     }
 }
